@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-9SQMVVRG13"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-9SQMVVRG13');
+</script>
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="data:," />
+<title>Fashion-MNIST in Houdini PDG | Jongwon Pak</title>
+<meta name="description" content="Fashion-MNIST in Houdini PDG — a TOP network renders a 3D character's clothes to 28x28 images and trains a LeNet classifier to tell them apart." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://jongwonpak.github.io/fashion-mnist.html" />
+<meta property="og:title" content="Fashion-MNIST in Houdini PDG | Jongwon Pak" />
+<meta property="og:description" content="A TOP network renders a 3D character's clothes to 28x28 images and trains a LeNet classifier to tell them apart — 95.8% on unseen view angles." />
+<meta property="og:image" content="https://jongwonpak.github.io/fm-garments.jpg" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#0a0b0d; --bg-2:#0e0f12;
+    --surface:#121317; --surface-2:#17181d;
+    --text:#eceef1; --muted:#a3a8b0; --faint:#6d727b;
+    --accent:#4d7cff; --accent-strong:#2f62f0; --accent-soft:rgba(77,124,255,.13);
+    --border:rgba(255,255,255,.09);
+    --frame:#050506;
+    --nav-bg:rgba(10,11,13,.78);
+    --radius:16px; --max:1120px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Manrope',system-ui,sans-serif;
+       font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  ::selection{background:var(--accent);color:#fff}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 28px}
+  .mono{font-family:'IBM Plex Mono',monospace}
+
+  /* ---------- nav ---------- */
+  nav{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--nav-bg);
+      backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+      border-bottom:1px solid var(--border)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .wordmark{font-family:'Sora',sans-serif;font-weight:700;font-size:16px;letter-spacing:.01em}
+  .wordmark span{color:var(--accent)}
+  .links{display:flex;gap:24px;font-size:14px;font-weight:600;color:var(--muted)}
+  .links a{transition:color .2s}
+  .links a:hover{color:var(--text)}
+  .nav-cta{font-size:14px;font-weight:700;border:1px solid var(--border);border-radius:999px;
+           padding:8px 18px;transition:.2s}
+  .nav-cta:hover{border-color:var(--accent);color:var(--accent)}
+  .burger{display:none;background:none;border:0;color:var(--text);font-size:22px;cursor:pointer;line-height:1}
+  @media(max-width:760px){
+    .links{display:none;position:absolute;top:64px;left:0;right:0;flex-direction:column;
+           background:var(--bg-2);border-bottom:1px solid var(--border);padding:18px 28px;gap:16px}
+    .links.open{display:flex}
+    .burger{display:block}
+    .nav-cta{display:none}
+  }
+
+  /* ---------- hero ---------- */
+  header{padding:168px 0 96px;position:relative}
+  .kicker{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.22em;
+          text-transform:uppercase;color:var(--accent);margin-bottom:26px}
+  h1{font-family:'Sora',sans-serif;font-size:clamp(44px,7.6vw,88px);font-weight:800;
+     line-height:1.03;letter-spacing:-.025em;margin-bottom:22px}
+  h1 .thin{display:block;color:var(--faint);font-weight:600}
+  .role{font-size:clamp(17px,2.4vw,22px);color:var(--muted);font-weight:500;margin-bottom:16px}
+  .role b{color:var(--text);font-weight:700}
+  .tagline{max-width:640px;color:var(--muted);font-size:17px;margin-bottom:38px}
+  .cta-row{display:flex;gap:14px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:9px;font-weight:700;font-size:15px;
+       border-radius:999px;padding:13px 28px;transition:.2s;cursor:pointer;border:1px solid transparent}
+  .btn-primary{background:var(--accent-strong);color:#fff}
+  .btn-primary:hover{background:var(--accent);transform:translateY(-1px)}
+  .btn-ghost{border-color:var(--border);color:var(--text)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .hero-meta{margin-top:60px;padding-top:28px;border-top:1px solid var(--border);
+              display:flex;gap:44px;flex-wrap:wrap;color:var(--faint);font-size:13.5px}
+  .hero-meta b{display:block;color:var(--text);font-size:15px;font-weight:700;margin-bottom:2px}
+
+  /* ---------- sections ---------- */
+  section{padding:92px 0;border-top:1px solid var(--border)}
+  .sec-label{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.22em;
+             text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+  h2{font-family:'Sora',sans-serif;font-size:clamp(30px,4.4vw,42px);font-weight:700;
+     letter-spacing:-.02em;margin-bottom:12px}
+  .sec-sub{color:var(--muted);max-width:640px;margin-bottom:44px;font-size:16px}
+
+  /* reels */
+  .reel-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+  @media(max-width:820px){.reel-grid{grid-template-columns:1fr}}
+  .reel-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+             overflow:hidden;transition:border-color .25s,transform .25s;display:flex;flex-direction:column}
+  .reel-card:hover{transform:translateY(-4px);border-color:var(--accent)}
+  .reel-card.featured{grid-column:1 / -1}
+  .reel-frame{position:relative;padding-top:56.25%;background:var(--frame);overflow:hidden}
+  .reel-card.featured .reel-frame{padding-top:42%}
+  @media(max-width:820px){.reel-card.featured .reel-frame{padding-top:56.25%}}
+  .frame-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+               justify-content:center;gap:14px;text-align:center;padding:20px}
+  .play-ring{width:64px;height:64px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);
+             display:flex;align-items:center;justify-content:center;transition:.25s}
+  .play-ring svg{margin-left:3px}
+  a.reel-card:hover .play-ring{border-color:var(--accent);background:var(--accent-soft);transform:scale(1.06)}
+  .frame-note{color:rgba(255,255,255,.55);font-size:13px;font-family:'IBM Plex Mono',monospace;letter-spacing:.04em}
+  .frame-note.light{color:rgba(255,255,255,.4)}
+  .reel-body{padding:22px 24px}
+  .reel-body h3{font-family:'Sora',sans-serif;font-size:19px;font-weight:700;margin-bottom:6px;
+                display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .reel-body p{color:var(--muted);font-size:14px}
+  .pill{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+        color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:3px 10px;font-weight:500}
+  .ext{font-size:13px;font-weight:700;color:var(--accent)}
+
+  /* projects */
+  .proj-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+  @media(max-width:900px){.proj-grid{grid-template-columns:1fr}}
+  .proj{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+        overflow:hidden;display:flex;flex-direction:column;transition:border-color .25s,transform .25s}
+  .proj:hover{transform:translateY(-4px);border-color:var(--accent)}
+  .proj-img{aspect-ratio:16/10;background:var(--surface-2);overflow:hidden;
+            display:flex;align-items:center;justify-content:center}
+  .proj-img img{width:100%;height:100%;object-fit:cover;display:block}
+  .code-mark{font-family:'IBM Plex Mono',monospace;font-size:15px;color:var(--muted);
+             padding:18px 22px;line-height:1.9;white-space:pre}
+  .code-mark .k{color:var(--accent)}
+  .proj-body{padding:22px 24px;display:flex;flex-direction:column;flex:1}
+  .proj-tag{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;
+            text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+  .proj-body h3{font-family:'Sora',sans-serif;font-size:19px;font-weight:700;margin-bottom:8px}
+  .proj-body p{color:var(--muted);font-size:14px;flex:1}
+  .proj-link{margin-top:18px;font-size:14px;font-weight:700;color:var(--accent)}
+  .proj-link:hover{text-decoration:underline}
+  .proj.wide{grid-column:1 / -1}
+  .proj-video{aspect-ratio:16/9;background:var(--frame)}
+  .proj-video video{width:100%;height:100%;display:block;object-fit:cover}
+  .proj-shot{border-top:1px solid var(--border)}
+  .proj-shot img{width:100%;display:block}
+  .proj-shot figcaption{padding:12px 24px;font-size:12.5px;color:var(--faint);
+                        font-family:'IBM Plex Mono',monospace;letter-spacing:.03em}
+
+  /* experience */
+  .timeline{position:relative;margin-top:8px}
+  .timeline::before{content:"";position:absolute;left:7px;top:10px;bottom:10px;width:2px;
+                    background:linear-gradient(var(--accent),transparent)}
+  .t-item{position:relative;padding:0 0 40px 42px}
+  .t-item:last-child{padding-bottom:0}
+  .t-item::before{content:"";position:absolute;left:0;top:7px;width:16px;height:16px;border-radius:50%;
+                  background:var(--bg);border:2px solid var(--accent)}
+  .t-date{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--faint);
+          letter-spacing:.05em;margin-bottom:5px}
+  .t-item h3{font-family:'Sora',sans-serif;font-size:19px;font-weight:700}
+  .t-item h3 span{color:var(--muted);font-weight:500}
+  .t-shows{color:var(--muted);font-size:14px;font-style:italic;margin:4px 0 6px}
+  .t-item p{color:var(--muted);font-size:14.5px;max-width:720px}
+  .t-earlier{margin-top:6px;color:var(--faint);font-size:14px;max-width:760px;padding-left:42px}
+
+  /* about */
+  .about-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:52px;align-items:start}
+  @media(max-width:820px){.about-grid{grid-template-columns:1fr}}
+  .about-grid p{color:var(--muted);margin-bottom:16px;font-size:16px}
+  .about-grid p b{color:var(--text)}
+  .award{border:1px solid var(--accent);background:var(--accent-soft);border-radius:12px;
+         padding:20px 22px;font-size:14.5px;margin-top:10px;color:var(--text)}
+  .award b{color:var(--accent)}
+  .skills{margin-bottom:28px}
+  .skills h4{font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.2em;
+             text-transform:uppercase;color:var(--faint);margin-bottom:12px;font-weight:500}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{font-size:13px;font-weight:600;color:var(--muted);border:1px solid var(--border);
+        border-radius:999px;padding:6px 14px;background:var(--surface)}
+
+  /* contact */
+  #contact{text-align:center;padding:118px 0}
+  #contact .sec-sub{margin:0 auto 36px}
+  #contact .sec-label{text-align:center}
+  .social{display:flex;gap:12px;justify-content:center;margin-top:34px;flex-wrap:wrap}
+  .social a{font-size:14px;font-weight:700;color:var(--muted);border:1px solid var(--border);
+            border-radius:999px;padding:9px 20px;transition:.2s}
+  .social a:hover{color:var(--accent);border-color:var(--accent)}
+  footer{border-top:1px solid var(--border);padding:28px 0;color:var(--faint);font-size:13px}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+    *{transition:none !important}
+  }
+
+  /* ---------- fashion-mnist page ---------- */
+  h3.sec{font-family:'Sora',sans-serif;font-size:clamp(22px,3vw,27px);font-weight:700;
+         letter-spacing:-.01em;margin:64px 0 14px}
+  .body-text{color:var(--muted);max-width:760px;margin-bottom:16px}
+  .body-text b{color:var(--text)}
+  .body-text code, .body-list code{font-family:'IBM Plex Mono',monospace;font-size:.9em;
+         color:var(--text);background:var(--surface-2);padding:1px 6px;border-radius:6px}
+  .body-list{color:var(--muted);max-width:760px;margin:0 0 16px 20px}
+  .body-list li{margin-bottom:6px}
+  .data-table{width:100%;border-collapse:collapse;margin:0 0 28px;font-size:14.5px}
+  .data-table th,.data-table td{padding:10px 14px;border-bottom:1px solid var(--border);
+         text-align:left;vertical-align:top}
+  .data-table th{font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.12em;
+         text-transform:uppercase;color:var(--faint);font-weight:500}
+  .data-table td{color:var(--muted)}
+  .data-table td:first-child{color:var(--text);font-weight:600}
+  .data-table tr.picked td{color:var(--text)}
+  .data-table tr.picked td:first-child{color:var(--accent)}
+</style>
+<body>
+<nav>
+  <div class="wrap">
+    <a class="wordmark" href="index.html">Jongwon Pak<span>.</span></a>
+    <div class="links">
+      <a href="index.html">← Back to portfolio</a>
+    </div>
+  </div>
+</nav>
+<section>
+  <div class="wrap">
+    <div class="sec-label">R&amp;D — Breakdown</div>
+    <h2>Fashion-MNIST in Houdini PDG</h2>
+    <p class="sec-sub">Training an image classifier with a TOP network, testing it on garments rendered from a 3D character, and rendering the result in Karma.</p>
+    <p class="sec-sub">This project rebuilds Ryan Gold&rsquo;s Houdini PDG + Machine Learning MNIST setup, with two changes. The dataset is Fashion-MNIST (clothing) instead of handwritten digits, and the test images are not drawn by hand &mdash; they are rendered from the clothes of the character at <code>/obj/new_head1/scale_x10</code> in <code>minst.hip</code>.</p>
+    <p class="sec-sub">Everything runs as one TOP network. It renders the garments, downloads the dataset, trains the LeNet model from the Colab notebook in three versions, picks the best one, classifies the garment images, builds 3D maps of the dataset, and renders stills and a turntable in Karma.</p>
+    <p class="sec-sub"><b>Main result:</b> a network trained only on Fashion-MNIST reaches 90.9% on the Fashion-MNIST test set but recognises only 14.6% of the character&rsquo;s garments. Mixing renders of the garments into training raises that to 95.8% on view angles the network never saw, while its Fashion-MNIST score drops to 83.9%.</p>
+
+    <div class="proj-grid">
+      <article class="proj wide">
+        <div class="proj-body">
+          <div class="proj-tag">Houdini · PDG · PyTorch · Karma</div>
+        </div>
+        <figure class="proj-shot">
+          <img src="fm-garments.jpg" alt="Fashion-MNIST in Houdini PDG — the character and its five garments" loading="lazy" />
+          <figcaption>Source model and its garments. Left: the character with its garments tinted in the colour of their Fashion-MNIST class. Right: the five garments isolated from the model. The hat has no matching class in Fashion-MNIST.</figcaption>
+        </figure>
+      </article>
+    </div>
+
+    <h3 class="sec" id="overview">1. From 3D garment to 28&times;28 image</h3>
+    <p class="body-text">The model is one mesh. Every polygon has a <code>usdprimpath</code> attribute (shirt, chaps, boots, hat, and so on). <code>/obj/fashion_items</code> uses that attribute to keep one garment at a time. It is built only from SOP nodes and hscript expressions, with no wrangles:</p>
+    <ul class="body-list">
+      <li>A Blast per garment keeps its polygons, and a Switch picks the garment from the work item attribute <code>item</code>.</li>
+      <li>Two Transforms turn it to the view angle (yaw, tilt).</li>
+      <li><b>Match Size</b> centres it and scales it to fill the frame.</li>
+      <li>An <b>Attribute Create</b> shades it by how much each point faces the camera.</li>
+    </ul>
+    <p class="body-text">A <b>Copernicus</b> network (<code>/obj/fashion_cop</code>) turns that shading into pixels, then box-filters it down to <b>28&times;28 grey pixels</b> &mdash; the Fashion-MNIST format. Three chained <b>Wedge TOPs</b> make every combination: <b>5 garments &times; 24 yaw angles &times; 3 tilts = 360 images</b>.</p>
+
+    <div class="proj-grid">
+      <article class="proj wide">
+        <figure class="proj-shot">
+          <img src="fm-yaw-strip.jpg" alt="Fashion-MNIST in Houdini PDG — all 24 yaw angles at tilt 0 with predicted classes" loading="lazy" />
+          <figcaption>All 24 yaw angles at tilt 0, with the class the final model predicted. Green = correct, red = wrong, yellow = the hat, which has no class. The header marks which angles were used for training (tra), model selection (sel) and testing (tes).</figcaption>
+        </figure>
+      </article>
+    </div>
+
+    <h3 class="sec" id="top-network">2. The TOP network</h3>
+    <p class="body-text"><code>/obj/fashion_mnist</code> holds the whole pipeline. Each row below is one or more TOP nodes. The machine-learning steps are Python Script TOPs. They run in a separate Python environment with PyTorch (a <code>venv/</code> folder next to the hip file) &mdash; the same trick as in the reference article.</p>
+    <table class="data-table">
+      <tr><th>TOP nodes</th><th>What they do</th></tr>
+      <tr><td>wedge_items, wedge_views, wedge_tilts</td><td>One work item per garment, yaw angle and tilt: 360 in total</td></tr>
+      <tr><td>render_item</td><td>ROP Image Output: renders each garment to a 28&times;28 PNG</td></tr>
+      <tr><td>download_fashion_mnist</td><td>Downloads the dataset (60,000 training and 10,000 test images)</td></tr>
+      <tr><td>wedge_hyperparams</td><td>One work item per training recipe, with learning rate and epochs</td></tr>
+      <tr><td>train_lenet</td><td>Trains LeNet, saves the weights and the accuracy numbers</td></tr>
+      <tr><td>pick_best_model</td><td>Chooses the best recipe</td></tr>
+      <tr><td>predict_items, predictions</td><td>Classifies all 360 images, then makes one work item per image</td></tr>
+      <tr><td>embed_dataset</td><td>PCA and t-SNE maps of the dataset in 3D</td></tr>
+      <tr><td>wedge_shots, render_karma</td><td>Four Karma stills</td></tr>
+      <tr><td>render_turntable, make_videos</td><td>60-frame Karma turntable and two mp4 clips</td></tr>
+      <tr><td>presentation_images</td><td>Adds titles to the stills and draws the network diagram</td></tr>
+    </table>
+    <p class="body-text">Clicking a work item of <code>predictions</code> shows that garment in the viewport with its predicted label. The label comes from the work item attributes &mdash; the same idea as the Font node in the original MNIST setup.</p>
+
+    <div class="proj-grid">
+      <article class="proj wide">
+        <figure class="proj-shot" style="max-width:600px;margin:0 auto">
+          <img src="fm-top-network.png" alt="Fashion-MNIST in Houdini PDG — TOP network diagram" loading="lazy" />
+          <figcaption>The TOP network, drawn from the real node names and wiring. This is a diagram, not a screenshot: capturing the Houdini window did not work in this session.</figcaption>
+        </figure>
+      </article>
+    </div>
+
+    <h3 class="sec" id="results">3. Training and results</h3>
+    <p class="body-text">The model is the LeNet from the Colab notebook: two 5&times;5 convolution layers (20 and 50 filters) with max pooling, a 500-unit layer with dropout, and 10 outputs. It trains for 5 epochs with Adam at a learning rate of 0.001, on CPU.</p>
+    <p class="body-text"><b>Why three recipes?</b> The first version trained only on Fashion-MNIST and failed on the garments. The character is in a walking pose, its boots are tall cowboy boots, and nothing in Fashion-MNIST looks like that. So the hyperparameter wedge compares three recipes:</p>
+    <ul class="body-list">
+      <li><b>baseline:</b> Fashion-MNIST as it is</li>
+      <li><b>augment:</b> random rotation, zoom, stretch, flip and brightness change on every batch</li>
+      <li><b>augment_finetune:</b> the same, plus garment renders mixed into the training data</li>
+    </ul>
+    <p class="body-text"><b>Keeping the test honest.</b> The garment images are split by yaw angle. Angles 0, 45, 90&hellip; are used for training, 15, 60, 105&hellip; for choosing the model, and 30, 75, 120&hellip; only for the final score. The hat is left out of the score because Fashion-MNIST has no hat class.</p>
+    <table class="data-table">
+      <tr><th>Recipe</th><th>Dataset test</th><th>Garment test</th><th>Shirt</th><th>Trousers</th><th>Boot L</th><th>Boot R</th></tr>
+      <tr><td>baseline</td><td>90.9%</td><td>14.6%</td><td>12.5%</td><td>20.8%</td><td>0.0%</td><td>25.0%</td></tr>
+      <tr><td>augment</td><td>84.8%</td><td>25.0%</td><td>0.0%</td><td>25.0%</td><td>0.0%</td><td>75.0%</td></tr>
+      <tr class="picked"><td>augment_finetune (picked)</td><td>83.9%</td><td>95.8%</td><td>100.0%</td><td>100.0%</td><td>87.5%</td><td>95.8%</td></tr>
+    </table>
+    <p class="body-text">Accuracy on the 96 garment test images (4 garments &times; 8 angles &times; 3 tilts) and on the 10,000 Fashion-MNIST test images.</p>
+    <p class="body-text"><b>What the numbers say:</b></p>
+    <ul class="body-list">
+      <li>Augmentation alone barely helps. The problem is pose and proportion, not rotation or scale.</li>
+      <li>Training on the garments fixes it &mdash; but costs about 7 points on Fashion-MNIST itself.</li>
+      <li>The remaining misses are boots seen from the front or back, read as Dress.</li>
+      <li>The hat is most often called Bag (16 of 72 images), then Sneaker.</li>
+    </ul>
+    <p class="body-text"><b>One limit:</b> the test images are new angles of the same five garments, not new garments. The score shows the network learned this character&rsquo;s clothes. It does not show it would recognise clothes from another model.</p>
+
+    <h3 class="sec" id="embedding">4. Looking at the dataset in 3D</h3>
+    <p class="body-text">Following Christopher Olah&rsquo;s <i>Visualizing MNIST</i>, <code>embed_dataset</code> turns each image into a point in 3D, so similar images land close together. 2,500 Fashion-MNIST test images (250 per class) and the 360 garment renders go into the same map. The CSV files it writes are read by Table Import SOPs in <code>/obj/fashion_embedding</code>, where a Switch chooses the map.</p>
+
+    <div class="proj-grid">
+      <article class="proj wide">
+        <figure class="proj-shot">
+          <img src="fm-pca.jpg" alt="Fashion-MNIST in Houdini PDG — PCA of the raw pixels" loading="lazy" />
+          <figcaption>PCA of the raw pixels. A straight-line projection: classes overlap a lot. Small points are Fashion-MNIST images, large spheres are the rendered garments, coloured by the class the network predicted.</figcaption>
+        </figure>
+        <figure class="proj-shot">
+          <img src="fm-tsne-pixels.jpg" alt="Fashion-MNIST in Houdini PDG — t-SNE of the raw pixels" loading="lazy" />
+          <figcaption>t-SNE of the raw pixels. Classes start to form separate groups, with shoes on one side and upper-body clothing on the other.</figcaption>
+        </figure>
+        <figure class="proj-shot">
+          <img src="fm-tsne-features.jpg" alt="Fashion-MNIST in Houdini PDG — t-SNE of LeNet hidden-layer features" loading="lazy" />
+          <figcaption>t-SNE of the 500 activations in LeNet&rsquo;s hidden layer. This is how the trained network sees the images. The garment spheres form their own tight groups close to &mdash; but not inside &mdash; the class they are assigned to. The network recognises them, yet still sees them as different from real Fashion-MNIST images.</figcaption>
+        </figure>
+      </article>
+    </div>
+
+    <h3 class="sec">5. Karma render setup</h3>
+    <p class="body-text">The renders come from a small Solaris network (<code>/stage/fm_*</code>). A work item attribute, <code>shot</code>, picks the geometry and the camera, so the TOP network renders all shots from one Karma node.</p>
+    <ul class="body-list">
+      <li><b>Shaders:</b> MaterialX Standard Surface. Cloth with sheen for shirt, trousers and hat; coated plastic for the boots; matte clay for the character; glowing points and text; a dark glossy floor. Colour always comes from the geometry, so class colours stay the same in the plots and the renders.</li>
+      <li><b>Lighting:</b> a warm key light, a cool fill, a rim light from behind, and a low sky.</li>
+      <li><b>Quality:</b> stills at 1920&times;1080, 64 samples, with the denoiser. The turntable is 60 frames at 960&times;540, 16 samples.</li>
+      <li><b>Render time:</b> Karma XPU fell back to CPU because the graphics driver is too old for OptiX. A still takes 4 to 6 minutes; the turntable about 25 minutes.</li>
+    </ul>
+    <p class="body-text">Two short clips sit next to the stills: <code>embedding_turntable.mp4</code> (2.5 s, the feature-space map turning) and <code>garment_predictions.mp4</code> (3 s, the 28&times;28 garment images turning with their predicted label).</p>
+
+    <h3 class="sec">6. Files and how to run it</h3>
+    <table class="data-table">
+      <tr><th>File</th><th>Contents</th></tr>
+      <tr><td>fashion_mnist.hip</td><td>minst.hip plus the new nodes. minst.hip itself is unchanged</td></tr>
+      <tr><td>scripts/build_fashion_mnist.py</td><td>Rebuilds every node. Can also run inside an open session</td></tr>
+      <tr><td>scripts/cook_fashion_mnist.py</td><td>Cooks the TOP network without the interface</td></tr>
+      <tr><td>scripts/fm_*.py</td><td>The code inside the Python Script TOPs</td></tr>
+      <tr><td>ml/recipe_comparison.csv</td><td>The accuracy table above</td></tr>
+      <tr><td>ml/predictions.csv</td><td>One row per garment image</td></tr>
+      <tr><td>ml/jessie_fashion_mnist.npz</td><td>The 360 garment images as an MNIST-style array</td></tr>
+      <tr><td>render/presentation/</td><td>Stills, turntable frames, videos and the network diagram</td></tr>
+    </table>
+    <p class="body-text">To cook everything, open <code>fashion_mnist.hip</code> and cook <code>presentation_images</code> in <code>/obj/fashion_mnist</code>. Finished training runs are reused; delete <code>ml/models</code> to train again.</p>
+    <p class="body-text"><b>Known gaps:</b></p>
+    <ul class="body-list">
+      <li>No real screenshots of the Houdini interface: every capture attempt returned a black image.</li>
+      <li>The video node failed in the full cook and was then rewired. The clips were made by running the same script on the finished frames, so the fixed wiring has not been cooked through PDG yet.</li>
+      <li>The nodes live in <code>fashion_mnist.hip</code>. They were not added to the open <code>minst.hip</code> session.</li>
+    </ul>
+    <p class="body-text"><b>References:</b></p>
+    <ul class="body-list">
+      <li>Ryan Gold, <i>Houdini PDG + Machine Learning &mdash; MNIST Image Recognition</i> and <i>Houdini PDG &mdash; Gradient Descent</i> (ArtStation blog)</li>
+      <li>MNIST Image Recognition Colab notebook (source of the LeNet model)</li>
+      <li>Christopher Olah, <i>Visualizing MNIST: An Exploration of Dimensionality Reduction</i></li>
+      <li>Xiao, Rasul, Vollgraf, Fashion-MNIST dataset (Zalando Research)</li>
+    </ul>
+
+    <p style="margin-top:28px"><a class="btn btn-ghost" href="index.html">&larr; Back to portfolio</a></p>
+  </div>
+</section>
+</body>
+</html>
